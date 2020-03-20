@@ -198,7 +198,10 @@ class Client():
 	def exit_handler(self):
 		self.routing_.restore_default_route(self.default_gw);
 
+# Start the client
 from config import config
 client = Client(config);
+
+# Register exit hook
 atexit.register(client.exit_handler);
 client.loop();

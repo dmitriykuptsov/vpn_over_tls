@@ -77,7 +77,7 @@ On client machine, go to directory vpn_over_tls/src and run the following comman
 $ sudo python3 client/client.py
 ```
 
-# Manual configurations
+# Manual configuration
 
 Newer version of VPN software automatically performs configuration of the client and server machines. However,
 if for some reason the user needs to manually configure, he or she can follow the instructions presented below.
@@ -95,7 +95,7 @@ $ sudo sysctl -w net.ipv4.ip_forward=1
 (ii) Enable NAT in iptables
 
 ```
-$ sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+$ sudo iptables -t nat -A POSTROUTING ! -o lo -j MASQUERADE
 ```
 
 On client machine, execute the following commands:

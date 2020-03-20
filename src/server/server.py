@@ -187,7 +187,11 @@ class Server():
 					sleep(1);
 					continue;
 			elif self.sm.is_connected():
-				buf = bytearray(self.client_socket.recv(self.buffer_size));
+				buf = None
+				try:
+					buf = bytearray(self.client_socket.recv(self.buffer_size));
+				except:
+					print("Failed to read from socket...");
 				if len(buf) > 0:
 					print("Received authentication packet...");
 					p = packet.AuthenticationPacket(buf);
@@ -195,26 +199,39 @@ class Server():
 						continue;
 					if utils.Utils.check_buffer_is_empty(p.get_password()):
 						print("Invalid credentials");
-						nack = packet.NegativeAcknowledgementPacket();
-						self.client_socket.send(nack.get_buffer());
-						self.client_socket.close();
+						try:
+							nack = packet.NegativeAcknowledgementPacket();
+							self.client_socket.send(nack.get_buffer());
+							self.client_socket.close();
+						except:
+							print("Failed to write into socket...");
 						self.sm.unknown();
 						continue;
 					if utils.Utils.check_buffer_is_empty(p.get_username()):
 						print("Invalid credentials");
-						nack = packet.NegativeAcknowledgementPacket();
-						self.client_socket.send(nack.get_buffer());
-						self.client_socket.close();
+						try:
+							nack = packet.NegativeAcknowledgementPacket();
+							self.client_socket.send(nack.get_buffer());
+							self.client_socket.close();
+						except:
+							print("Failed to write into socket...");
 						self.sm.unknown();
 						continue;
 					if self.database.is_authentic(p.get_username(), p.get_password(), self.salt):
 						self.sm.authenticated();
-						ack = packet.AcknowledgementPacket();
-						self.client_socket.send(ack.get_buffer());
+						try:
+							ack = packet.AcknowledgementPacket();
+							self.client_socket.send(ack.get_buffer());
+						except:
+							print("Failed to write into socket...");
+							self.sm.unknown();
 					else:
-						nack = packet.NegativeAcknowledgementPacket();
-						self.client_socket.send(nack.get_buffer());
-						self.client_socket.close();
+						try:
+							nack = packet.NegativeAcknowledgementPacket();
+							self.client_socket.send(nack.get_buffer());
+							self.client_socket.close();
+						except:
+							print("Failed to write into socket...");
 						self.sm.unknown();
 			elif self.sm.is_authenticated():
 				self.client_ip = self.ip_pool.lease_ip();
@@ -223,8 +240,12 @@ class Server():
 				configuration.set_default_gw(list(bytearray(self.tun_address, encoding="ASCII")));
 				configuration.set_ipv4_address(list(bytearray(self.client_ip, encoding="ASCII")));
 				configuration.set_mtu(list(struct.pack("I", self.tun_mtu)));
-				self.client_socket.send(configuration.get_buffer());
-				self.sm.configured();
+				try:
+					self.client_socket.send(configuration.get_buffer());
+					self.sm.configured();
+				except:
+					self.sm.unknown();
+					print("Failed to write into socket...");
 			elif self.sm.is_configured():
 				self.tun_thread = threading.Thread(target = self.tun_loop);
 				self.tls_thread = threading.Thread(target = self.tls_loop);
@@ -240,6 +261,7 @@ class Server():
 		self.nat_.disable_forwarding();
 		self.nat_.disable_masquerade_tun_interface();
 
+# Start the server
 from config import config
 server = Server(config, database.FileDatabase("./server/database.dat"));
 atexit.register(server.exit_handler);

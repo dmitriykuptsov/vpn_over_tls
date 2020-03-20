@@ -1,11 +1,14 @@
+# Packet lengths
 PACKET_LENGTH_FIELD_LENGTH = 0x2;
 PACKET_TYPE_FIELD_LENGTH   = 0x2;
 
 PACKET_TYPE_FIELD_OFFSET   = 0x0;
 PACKET_LENGTH_FIELD_OFFSET = 0x2;
 
+# Offset for the attributes
 PACKET_ATTR_OFFSET         = 0x4;
 
+# Attrbute fields lengths and offsets
 ATTR_TYPE_FIELD_LENGTH     = 0x1;
 ATTR_LENGTH_FIELD_LENGTH   = 0x3;
 ATTR_LENGTH_FIELD_OFFSET   = 0x1;
@@ -27,8 +30,12 @@ PACKET_TYPE_DATA           = 0x3;
 PACKET_TYPE_ACK            = 0x4;
 PACKET_TYPE_NACK           = 0x5;
 
+# Import structures
 import struct
 
+"""
+General packet 
+"""
 class Packet():
 	"""
 	Initializes the buffer
@@ -120,7 +127,9 @@ class Packet():
 			offset += ATTR_LENGTH_FIELD_LENGTH + ATTR_TYPE_FIELD_LENGTH + attr_length;
 		return attributes;
 
-
+"""
+VPN TLS attributes
+"""
 class Attribute():
 	"""
 	Initializes the attribute
@@ -144,7 +153,9 @@ class Attribute():
 		return self.buf[0];
 
 	"""
-	Sets the length of an attribute
+	Sets the length of an attribute.
+	Indeed this should be no more than 2 bytes
+	because packet length is just two bytes.
 	"""
 	def set_length(self, length):
 		self.buf[ATTR_LENGTH_FIELD_OFFSET] = (length >> 16) & 0xFF;
@@ -243,7 +254,9 @@ class AuthenticationPacket(Packet):
 			if attribute.get_type() == ATTR_TYPE_PASSWORD:
 				return attribute.get_value();
 		return None;
-
+"""
+Configuration packet
+"""
 class ConfigurationPacket(Packet):
 	"""
 	Initializes the buffer
@@ -327,7 +340,9 @@ class ConfigurationPacket(Packet):
 			if attribute.get_type() == ATTR_TYPE_IPV4_ADDRESS:
 				return attribute.get_value();
 		return None;
-
+"""
+Data packet
+"""
 class DataPacket(Packet):
 	"""
 	Initializes the buffer
