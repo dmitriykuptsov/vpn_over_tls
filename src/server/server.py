@@ -70,6 +70,7 @@ class Server():
 		self.tun_mtu = config["TUN_MTU"];
 		self.buffer_size = config["BUFFER_SIZE"];
 		self.salt = config["SALT"];
+		self.pseudo_header_size = config["PSEUDO_HEADER_SIZE"];
 
 		"""
 		Create secure socket and bind it to address and port
@@ -140,7 +141,7 @@ class Server():
 	Reads data from TUN interface
 	"""
 	def read_from_tun(self):
-		buf = self.tun.read(self.buffer_size);
+		buf = self.tun.read(self.tun_mtu + self.pseudo_header_size);
 		return buf;
 	
 	"""

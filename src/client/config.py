@@ -7,6 +7,7 @@ config = {
 	"SERVER_HOSTNAME": "strangebit.com",
 	"CA_CERTIFICATE": "./certificates/certchain.pem",
 	"BUFFER_SIZE": 1500,
+	"PSEUDO_HEADER_SIZE": 4,
 	"DEFAULT_GW": "10.0.2.2",
 	"DNS_SERVER": "8.8.8.8"
 }

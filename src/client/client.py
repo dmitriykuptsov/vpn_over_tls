@@ -49,6 +49,7 @@ class Client():
 		self.default_gw = config["DEFAULT_GW"];
 		self.dns_server = config["DNS_SERVER"];
 		self.server_ip = config["SERVER_IP"];
+		self.pseudo_header_size = config["PSEUDO_HEADER_SIZE"];
 
 		"""
 		Initialize secure socket buffer
@@ -93,6 +94,7 @@ class Client():
 		if len(self.secure_socket_buffer) <= packet.Packet.get_header_length():
 			return None;
 		packet_length = packet.Packet.get_total_length(self.secure_socket_buffer);
+		print("Packet length %d" % (packet_length));
 		if packet_length > len(self.secure_socket_buffer):
 			return None;
 		buf = self.secure_socket_buffer[0:packet_length];
@@ -106,7 +108,7 @@ class Client():
 	Reads data from TUN interface
 	"""
 	def read_from_tun(self):
-		buf = bytearray(self.tun.read(self.buffer_size));
+		buf = bytearray(self.tun.read(self.tun_mtu + self.pseudo_header_size));
 		return buf;
 
 	"""
@@ -176,6 +178,7 @@ class Client():
 						bytearray(p.get_ipv4_address()).decode(encoding="ASCII"), 
 						bytearray(p.get_netmask()).decode(encoding="ASCII"), 
 						struct.unpack("I", bytearray(p.get_mtu()))[0]);
+					self.tun_mtu = struct.unpack("I", bytearray(p.get_mtu()))[0];
 					self.routing_.configure_default_route(bytearray(p.get_ipv4_address()).decode(encoding="ASCII"));
 					self.routing_.configure_tunnel_route(self.server_ip, self.default_gw);
 					self.dns_.configure_dns(self.dns_server);
