@@ -41,7 +41,7 @@ class Client():
 		self.ctx = ssl.create_default_context();
 		self.ctx.load_verify_locations(config["CA_CERTIFICATE"]);
 		self.sock = socket.create_connection((config["SERVER_IP"], config["SERVER_PORT"]));
-		self.ctx.check_hostname = True
+		self.ctx.check_hostname = True;
 		self.secure_socket = self.ctx.wrap_socket(self.sock, server_hostname=config["SERVER_HOSTNAME"], server_side=False);
 		self.sm = state.StateMachine();
 		self.sm.connected();
@@ -49,7 +49,6 @@ class Client():
 		self.default_gw = config["DEFAULT_GW"];
 		self.dns_server = config["DNS_SERVER"];
 		self.server_ip = config["SERVER_IP"];
-		self.pseudo_header_size = config["PSEUDO_HEADER_SIZE"];
 
 		"""
 		Initialize secure socket buffer
@@ -148,6 +147,7 @@ class Client():
 			if self.sm.is_unknown():
 				continue;
 			elif self.sm.is_connected():
+				print("Sending authentication data...");
 				p = packet.AuthenticationPacket();
 				p.set_username(bytearray(config["USERNAME"], encoding="ASCII"));
 				p.set_password(bytearray(config["PASSWORD"], encoding="ASCII"));
