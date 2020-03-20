@@ -6,7 +6,6 @@ config = {
 	"TUN_NAME": "tun0",
 	"TUN_MTU": 1500, 
 	"BUFFER_SIZE": 1500,
-	"PSEUDO_HEADER_SIZE": 4,
 	"CERTIFICATE_CHAIN": "./certificates/certchain.pem",
 	"PRIVATE_KEY": "./certificates/private.key",
 	"SALT": "WH!{*ewP]x}0RHoP9k|nu_L(R9jm*/:i"

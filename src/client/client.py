@@ -94,7 +94,7 @@ class Client():
 		if len(self.secure_socket_buffer) <= packet.Packet.get_header_length():
 			return None;
 		packet_length = packet.Packet.get_total_length(self.secure_socket_buffer);
-		print("Packet length %d" % (packet_length));
+		#print("Packet length %d" % (packet_length));
 		if packet_length > len(self.secure_socket_buffer):
 			return None;
 		buf = self.secure_socket_buffer[0:packet_length];
@@ -108,7 +108,8 @@ class Client():
 	Reads data from TUN interface
 	"""
 	def read_from_tun(self):
-		buf = bytearray(self.tun.read(self.tun_mtu + self.pseudo_header_size));
+		# https://stackoverflow.com/questions/43449664/why-the-leading-4bytes-data-missing-when-sending-raw-bytes-data-to-a-tap-device
+		buf = bytearray(self.tun.read(self.tun_mtu));
 		return buf;
 
 	"""

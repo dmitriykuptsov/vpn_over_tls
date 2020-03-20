@@ -52,7 +52,10 @@ On client machine, also go to directory vpn_over_tls/src/client and modify the I
 file (currently it is 94.237.31.77, but you have to change it to an IP address of your own server (on server machine you 
 can check the IP address either from administrative page, like it is offered in UpCloud or DigitalOcean, or by issuing ifconfig command))
 
-You can also generate password for your user. To do so, do the following (replace the user test password with your own password):
+One, probably, needs to also modify the IP address of default gateway. Currently it is set to 10.0.2.2, but it needs to be 
+the default route of your network.
+
+Finally, you need to generate password for your user. To do so, do the following (replace the user test password with your own password):
 ```
 $ cd vpt_over_ssl/src
 $ python3 tools/gen.py test
@@ -60,7 +63,7 @@ $ python3 tools/gen.py test
 
 Then, copy the generated hash string and add it to the database.dat file in the vpn_over_ssl/server/ folder (you might also want to change the default username in that database file).
 
-# Running the VPN (Old style)
+# Running the VPN
 
 On server machine, go to directory vpn_over_tls/src and run the following command:
 
@@ -74,7 +77,12 @@ On client machine, go to directory vpn_over_tls/src and run the following comman
 $ sudo python3 client/client.py
 ```
 
-Now open new terminal windows on both client and server (leave previous two windows open so that the VPN software will be running).
+# Manual configurations
+
+Newer version of VPN software automatically performs configuration of the client and server machines. However,
+if for some reason the user needs to manually configure, he or she can follow the instructions presented below.
+
+Open new terminal windows on both client and server (leave previous two windows open so that the VPN software will be running).
 
 On server machine, execute the following commands in the console:
 
@@ -117,22 +125,6 @@ $ sudo ip route add default via 10.0.0.2
 
 (iv) Change default DNS to, for example, 8.8.8.8. Do not use DNS offered by your DHCP, because it will not be reachable.
 To modify the DNS modify the /etc/resolv.conf file.
-
-# Running VPN (new version)
-
-Configure the client by changing the default gateway and server IP to yor own addreses in client/config.py file.
-
-On server machine, go to directory vpn_over_tls/src and run the following command:
-
-```
-$ sudo python3 server/server.py
-```
-
-On client machine, go to directory vpn_over_tls/src and run the following command:
-
-```
-$ sudo python3 client/client.py
-```
 
 # Testing the VPN
 

@@ -1,6 +1,8 @@
 from pytun import TunTapDevice
 from time import sleep
 
+PSEUDO_HEADER_SIZE = 0x4;
+
 class Tun():
 	"""
 	Initializes the tun device
@@ -17,7 +19,7 @@ class Tun():
 	Reads data from device
 	"""
 	def read(self, nbytes):
-		return self.tun.read(nbytes);
+		return self.tun.read(nbytes + PSEUDO_HEADER_SIZE);
 
 	"""
 	Writes buffer to device
