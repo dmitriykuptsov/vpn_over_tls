@@ -114,7 +114,10 @@ class Server():
 			return;
 		userdata = packet.DataPacket();
 		userdata.set_payload(payload);
-		self.client_socket.send(userdata.get_buffer());
+		try:
+			self.client_socket.send(userdata.get_buffer());
+		except:
+			
 
 	"""
 	Reads data from secure socket
