@@ -117,7 +117,7 @@ class Server():
 		try:
 			self.client_socket.send(userdata.get_buffer());
 		except:
-			
+			pass
 
 	"""
 	Reads data from secure socket
