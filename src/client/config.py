@@ -1,5 +1,5 @@
 config = {
-	"SERVER_IP": "94.237.31.77",
+	"SERVER_IP": "192.168.64.9",
 	"SERVER_PORT": 443,
 	"USERNAME": "dmitriy",
 	"PASSWORD": "test",
@@ -7,6 +7,6 @@ config = {
 	"SERVER_HOSTNAME": "strangebit.com",
 	"CA_CERTIFICATE": "./certificates/certchain.pem",
 	"BUFFER_SIZE": 1500,
-	"DEFAULT_GW": "10.0.2.2",
-	"DNS_SERVER": "8.8.8.8"
+	"DEFAULT_GW": "192.168.64.9",
+	"DNS_SERVER": "192.168.64.8"
 }
