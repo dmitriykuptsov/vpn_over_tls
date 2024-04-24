@@ -50,7 +50,7 @@ class Server():
 		"""
 		Initialize state machine
 		"""
-		self.sm = state.StateMachine();
+		#self.sm = state.StateMachine();
 
 		"""
 		Initialize IP address pool
@@ -96,7 +96,13 @@ class Server():
 		"""
 		Initialize secure socket buffer
 		"""
-		self.secure_socket_buffer = [];
+		self.addr_to_sock_mapping = {};
+		self.sock_to_addr_mapping = {};
+		self.buffers = {};
+	
+		tls_thread = threading.Thread(target = self.tls_loop);
+		tls_thread.daemon = True;
+		tls_thread.start();
 
 	"""
 	Writes data to TUN interface
@@ -109,31 +115,31 @@ class Server():
 	"""
 	Writes data packet into secure socket
 	"""
-	def write_to_secure_socket(self, payload):
+	def write_to_secure_socket(self, sock, payload):
 		if not payload:
 			return;
 		userdata = packet.DataPacket();
 		userdata.set_payload(payload);
 		try:
-			self.client_socket.send(userdata.get_buffer());
+			sock.send(userdata.get_buffer());
 		except:
 			pass
 
 	"""
 	Reads data from secure socket
 	"""
-	def read_from_secure_socket(self):
-		buf = self.client_socket.recv(self.buffer_size);
+	def read_from_secure_socket(self, sock, secure_socket_buffer):
+		buf = sock.recv(self.buffer_size);
 		if len(buf) == 0:
 			raise Exception("Socket was closed");
-		self.secure_socket_buffer += buf;
-		if len(self.secure_socket_buffer) <= packet.Packet.get_header_length():
+		secure_socket_buffer += buf;
+		if len(secure_socket_buffer) <= packet.Packet.get_header_length():
 			return None;
-		packet_length = packet.Packet.get_total_length(self.secure_socket_buffer);
-		if packet_length > len(self.secure_socket_buffer):
+		packet_length = packet.Packet.get_total_length(secure_socket_buffer);
+		if packet_length > len(secure_socket_buffer):
 			return None;
-		buf = self.secure_socket_buffer[:packet_length];
-		self.secure_socket_buffer = self.secure_socket_buffer[packet_length:];
+		buf = secure_socket_buffer[:packet_length];
+		secure_socket_buffer = secure_socket_buffer[packet_length:];
 		userdata = packet.DataPacket(buf);
 		if userdata.get_type() != packet.PACKET_TYPE_DATA:
 			return None;
@@ -149,16 +155,14 @@ class Server():
 	"""
 	TUN read loop
 	"""
-
-	def tun_loop(self):
+	def tun_loop(self, sock, sm, client_ip):
 		while True:
 			try:
-				self.write_to_tun(self.read_from_secure_socket());
+				self.write_to_tun(self.read_from_secure_socket(sock));
 			except:
 				print("Connection was closed");
-				self.sm.unknown();
-				self.ip_pool.release_ip(self.client_ip);
-				#self.tun_thread.join();
+				sm.unknown();
+				self.ip_pool.release_ip(client_ip);
 				break;
 
 	"""
@@ -167,38 +171,39 @@ class Server():
 	def tls_loop(self):
 		while True:
 			try:
-				self.write_to_secure_socket(self.read_from_tun());
+				buf = self.read_from_tun()
+				dest_addr = utils.Utils.get_destination(buf)
+				sock = self.addr_to_sock_mapping[dest_addr]
+				if not sock:
+					continue
+				self.write_to_secure_socket(sock, buf);
 			except:
 				print("Connection was closed")
-				self.sm.unknown();
-				self.ip_pool.release_ip(self.client_ip);
+				#self.ip_pool.release_ip(self.client_ip);
 				break;
-	"""
-	Main loop
-	"""
-	def loop(self):
+	
+	def client_loop(self, sock, sm):
+		"""
+		CLients main loop
+		"""
+		sm.connected();
+		client_ip = None
 		while True:
-			if self.sm.is_unknown():
-				try:
-					(sock, addr) = self.secure_sock.accept();
-					self.client_socket = sock;
-					self.client_address = addr;
-					self.sm.connected();
-				except:
-					print("Could not open the socket...")
-					sleep(1);
-					continue;
-			elif self.sm.is_connected():
+			if sm.is_unknown():
+				print("Closing connection to client")
+				if client_ip != None:
+					self.ip_pool.release_ip(client_ip);
+				break;
+			elif sm.is_connected():
 				buf = None
 				try:
-					buf = bytearray(self.client_socket.recv(self.buffer_size));
+					buf = bytearray(sock.recv(self.buffer_size));
 					if len(buf) == 0:
 						raise Exception("Socket was closed");
 				except:
 					print("Failed to read from socket...");
-					self.client_socket.close();
-					self.sm.unknown();
-					continue;
+					sock.close();
+					break;
 				if len(buf) > 0:
 					print("Received authentication packet...");
 					p = packet.AuthenticationPacket(buf);
@@ -209,65 +214,78 @@ class Server():
 							print("Invalid credentials");
 							try:
 								nack = packet.NegativeAcknowledgementPacket();
-								self.client_socket.send(nack.get_buffer());
-								self.client_socket.close();
+								sock.send(nack.get_buffer());
+								sock.close();
 							except:
 								print("Failed to write into socket...");
-							self.sm.unknown();
-							continue;
+							break;
 						if utils.Utils.check_buffer_is_empty(p.get_username()):
 							print("Invalid credentials");
 							try:
 								nack = packet.NegativeAcknowledgementPacket();
-								self.client_socket.send(nack.get_buffer());
-								self.client_socket.close();
+								sock.send(nack.get_buffer());
+								sock.close();
 							except:
 								print("Failed to write into socket...");
-							self.sm.unknown();
-							continue;
+							break;
 						if self.database.is_authentic(p.get_username(), p.get_password(), self.salt):
-							self.sm.authenticated();
+							sm.authenticated();
 							try:
 								ack = packet.AcknowledgementPacket();
-								self.client_socket.send(ack.get_buffer());
+								sock.send(ack.get_buffer());
 							except:
 								print("Failed to write data into socket...");
-								self.sm.unknown();
+								break
 						else:
 							try:
 								nack = packet.NegativeAcknowledgementPacket();
-								self.client_socket.send(nack.get_buffer());
-								self.client_socket.close();
+								sock.send(nack.get_buffer());
+								sock.close();
 							except:
 								print("Failed to write into socket...");
-							self.sm.unknown();
+							break
 					except:
-						self.client_socket.close();
-						self.sm.unknown();
+						sock.close();
 						print("Could not parse data");
-			elif self.sm.is_authenticated():
-				self.client_ip = self.ip_pool.lease_ip();
+						break
+			elif sm.is_authenticated():
+				client_ip = self.ip_pool.lease_ip();
 				configuration = packet.ConfigurationPacket();
 				configuration.set_netmask(list(bytearray(self.tun_netmask, encoding="ASCII")));
 				configuration.set_default_gw(list(bytearray(self.tun_address, encoding="ASCII")));
-				configuration.set_ipv4_address(list(bytearray(self.client_ip, encoding="ASCII")));
+				configuration.set_ipv4_address(list(bytearray(client_ip, encoding="ASCII")));
 				configuration.set_mtu(list(struct.pack("I", self.tun_mtu)));
+				self.sock_to_addr_mapping[sock] = client_ip
+				self.addr_to_sock_mapping[client_ip] = sock
 				try:
-					self.client_socket.send(configuration.get_buffer());
-					self.sm.configured();
+					sock.send(configuration.get_buffer());
+					sm.configured();
 				except:
-					self.sm.unknown();
 					print("Failed to write into socket...");
-			elif self.sm.is_configured():
-				self.tun_thread = threading.Thread(target = self.tun_loop);
-				self.tls_thread = threading.Thread(target = self.tls_loop);
-				self.tun_thread.daemon = True;
-				self.tls_thread.daemon = True;
-				self.tun_thread.start();
-				self.tls_thread.start();
-				self.sm.running();
-			elif self.sm.is_running():
+					break;
+			elif sm.is_configured():
+				tun_thread = threading.Thread(target = self.tun_loop, args=(sock, sm, client_ip));
+				#tls_thread = threading.Thread(target = self.tls_loop);
+				tun_thread.daemon = True;
+				#tls_thread.daemon = True;
+				tun_thread.start();
+				#tls_thread.start();
+				sm.running();
+			elif sm.is_running():
 				sleep(10);
+	"""
+	Main loop
+	"""
+	def loop(self):
+		while True:
+			(sock, addr) = self.secure_sock.accept();
+			sm = state.StateMachine();
+			client_thread = threading.Thread(target = self.client_loop, args=(sock, sm));
+			#tun_thread.daemon = True;
+			client_thread.daemon = True;
+			#self.tun_thread.start();
+			client_thread.start();
+			
 
 	def exit_handler(self):
 		self.nat_.disable_forwarding();
