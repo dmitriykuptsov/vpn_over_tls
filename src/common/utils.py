@@ -1,3 +1,5 @@
+from binascii import hexlify
+
 class Utils():
 	
 	"""
@@ -39,8 +41,9 @@ class Utils():
 		return False;
 	@staticmethod
 	def get_destination(buf):
-		ip = buf[16:20]
-		return Utils.int_to_ip(ip[3] << 24 | ip[2] << 16 | ip[1] << 8 | ip[0])
+		print(hexlify(buf))
+		ip = buf[20:24]
+		return Utils.int_to_ip(ip[0] << 24 | ip[1] << 16 | ip[2] << 8 | ip[3])
 
 """
 print(Utils.ip_to_int("192.168.0.1"));

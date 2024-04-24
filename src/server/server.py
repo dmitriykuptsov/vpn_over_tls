@@ -130,12 +130,20 @@ class Server():
 	"""
 	def read_from_secure_socket(self, sock, secure_socket_buffer):
 		buf = sock.recv(self.buffer_size);
+		print(list(bytearray(buf)))
+		print("GOT DATA ON TLS SOCKET " + str(len(buf)))
 		if len(buf) == 0:
 			raise Exception("Socket was closed");
 		secure_socket_buffer += buf;
+		print("++++++")
+		print(len(secure_socket_buffer))
 		if len(secure_socket_buffer) <= packet.Packet.get_header_length():
 			return None;
+		print(packet.Packet.get_header_length())
+		print("----------")
 		packet_length = packet.Packet.get_total_length(secure_socket_buffer);
+		print(packet_length)
+		print("----------")
 		if packet_length > len(secure_socket_buffer):
 			return None;
 		buf = secure_socket_buffer[:packet_length];
@@ -143,7 +151,9 @@ class Server():
 		userdata = packet.DataPacket(buf);
 		if userdata.get_type() != packet.PACKET_TYPE_DATA:
 			return None;
-		return userdata.get_payload();
+		print("SENDING DATA TO TUN INTERFACE");
+		print(list(bytearray(userdata.get_payload())))
+		return userdata.get_payload(), secure_socket_buffer
 
 	"""
 	Reads data from TUN interface
@@ -156,11 +166,15 @@ class Server():
 	TUN read loop
 	"""
 	def tun_loop(self, sock, sm, client_ip):
+		secure_socket_buffer = []
 		while True:
 			try:
-				self.write_to_tun(self.read_from_secure_socket(sock));
-			except:
-				print("Connection was closed");
+				payload, buf = self.read_from_secure_socket(sock, secure_socket_buffer)
+				self.write_to_tun(payload)
+				secure_socket_buffer = buf
+			except Exception as e:
+				print(e)
+				print("Connection was closed tun_loop");
 				sm.unknown();
 				self.ip_pool.release_ip(client_ip);
 				break;
@@ -171,16 +185,22 @@ class Server():
 	def tls_loop(self):
 		while True:
 			try:
+				print("Reading from TUN")
 				buf = self.read_from_tun()
+				print("Got data on tun interface")
+				print(buf)
 				dest_addr = utils.Utils.get_destination(buf)
-				sock = self.addr_to_sock_mapping[dest_addr]
+				sock = self.addr_to_sock_mapping.get(dest_addr, None)
+				print(dest_addr)
 				if not sock:
 					continue
+				print("sending data to " + dest_addr)
 				self.write_to_secure_socket(sock, buf);
-			except:
-				print("Connection was closed")
+			except Exception as e:
+				print(e)
+				print("Connection was closed in TLS loop")
 				#self.ip_pool.release_ip(self.client_ip);
-				break;
+				#break;
 	
 	def client_loop(self, sock, sm):
 		"""
@@ -257,6 +277,7 @@ class Server():
 				configuration.set_mtu(list(struct.pack("I", self.tun_mtu)));
 				self.sock_to_addr_mapping[sock] = client_ip
 				self.addr_to_sock_mapping[client_ip] = sock
+				print("Sending configuration data to client " + client_ip)
 				try:
 					sock.send(configuration.get_buffer());
 					sm.configured();
