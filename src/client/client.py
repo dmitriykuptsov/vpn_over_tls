@@ -123,6 +123,7 @@ class Client():
 			except:
 				print("Connection was closed, please restart the client...")
 				self.routing_.restore_default_route(self.default_gw);
+				self.sm.unknown();
 				break;
 
 
@@ -137,6 +138,7 @@ class Client():
 			except:
 				print("Connection was closed, please restart the client...");
 				self.routing_.restore_default_route(self.default_gw);
+				self.sm.unknown();
 				break;
 
 	"""
@@ -145,7 +147,7 @@ class Client():
 	def loop(self):
 		while True:
 			if self.sm.is_unknown():
-				continue;
+				break;
 			elif self.sm.is_connected():
 				print("Sending authentication data...");
 				p = packet.AuthenticationPacket();
